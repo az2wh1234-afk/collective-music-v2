@@ -98,7 +98,7 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
     setLeft(byUser); setPhase('ending'); setPanel(false);
     const s = sessRef.current;
     if (s) { ev(byUser ? 'left_early' : 'experience_ended'); void leaveSession(s.id).catch(() => undefined); }
-    window.setTimeout(() => { teardown(false); setPhase('ended'); }, 3000);
+    window.setTimeout(() => { teardown(false); setPhase('ended'); }, 2000);
   };
 
   // Withdraw before the experience has started (waiting screen): free the server-side presence and stop everything.
