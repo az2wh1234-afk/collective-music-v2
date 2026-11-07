@@ -15,5 +15,5 @@ export const COPY = {
   leave: 'Leave', surveyContinue: 'Continue to the feedback survey', surveyOffer: 'Share feedback anyway',
   surveyNote: 'The feedback survey completes the experience. You can also close this page now; nothing is submitted unless you send answers.',
   surveyFail: 'Your answers could not be sent. Please check your connection and press Send answers again.',
-  notFound: 'This link is not valid.', thanks: 'Thank you.',
+  notFound: 'This link is not valid.', thanks: 'Thank you for being part of this experience. If you have any additional feedback, questions, or thoughts you’d like to share, feel free to reach out at mjo@risd.edu.',
 };
