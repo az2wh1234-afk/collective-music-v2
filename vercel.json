@@ -1,0 +1,2 @@
+{ "rewrites": [{ "source": "/((?!audio/|assets/).*)", "destination": "/index.html" }],
+  "headers": [{ "source": "/audio/(.*)", "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }] }] }

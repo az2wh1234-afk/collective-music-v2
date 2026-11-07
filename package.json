@@ -1,0 +1,4 @@
+{ "name": "collective-music", "version": "2.0.0", "private": true, "type": "module",
+  "scripts": { "dev": "vite --host 0.0.0.0", "typecheck": "tsc --noEmit", "test:model": "tsx tests/model.test.ts", "build": "tsc --noEmit && vite build", "preview": "vite preview" },
+  "dependencies": { "@supabase/supabase-js": "^2.57.0", "qrcode": "^1.5.4", "react": "^19.1.1", "react-dom": "^19.1.1", "tone": "^15.1.22" },
+  "devDependencies": { "@types/qrcode": "^1.5.5", "@types/react": "^19.1.0", "@types/react-dom": "^19.1.0", "@vitejs/plugin-react": "^4.7.0", "tsx": "^4.19.0", "typescript": "^5.9.2", "vite": "^6.3.5" } }

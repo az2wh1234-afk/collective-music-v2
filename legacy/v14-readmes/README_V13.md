@@ -1,0 +1,1 @@
+V1.3: Run supabase/v13_destination_fix.sql in SQL Editor before deploying. Then upload all files to GitHub. Host saves destination, guest updates within ~5s. A successful save is now checked against server state. Existing audio and QR behavior preserved. The host is defined as the earliest session member. Start a fresh session for the test.\n

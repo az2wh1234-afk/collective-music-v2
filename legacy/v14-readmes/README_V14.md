@@ -1,0 +1,1 @@
+V1.4: Volume starts at 60%, rises to 100% over the first 10m of progress toward the destination, and never decreases during that journey. Filter opens at destination <=10m or during Stage 3 proximity crossfade. GPS movement speed otherwise controls filter. No new SQL. Deploy all files; start a new session for test.
