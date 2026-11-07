@@ -30,7 +30,7 @@ The destination never needs a redeploy: create a new session, or End → Reset a
 - Heartbeat every 3 s; presence expires after 20 s (configurable).
 
 ## Before public use
-- Fill `[ARTIST NAME]` / `[CONTACT EMAIL]` in `src/copy.ts` and have the research notice reviewed (advisor / IRB).
+- Fill `[Minkyeing Jo]` / `[mjo@risd.edu]` in `src/copy.ts` and have the research notice reviewed (advisor / IRB).
 - Free-text survey answers can contain personal details even though no identifiers are requested.
 
 ## Verification status (honest)
