@@ -269,7 +269,7 @@ begin
   delete from public.cm2_presence where session_id = p_session_id and user_id = auth.uid();
 end $$;
 
--- Research events are stored only for participants who consented.
+-- Feedback events are stored only for participants who consented.
 create or replace function public.cm2_log_event(p_session_id uuid, p_event text, p_meta jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
 declare m public.cm2_participants; v public.cm2_sessions;

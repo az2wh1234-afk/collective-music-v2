@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isRequiredQuestion, missingRequired } from '../lib/surveyValidation';
 export type Answers = Record<string, string | string[] | number>;
 export type SurveyContext = { metOther: boolean; reached: boolean };
 type Q = { id: string; text: string; type: 'multi' | 'single' | 'scale' | 'text'; options?: string[]; other?: boolean;
@@ -17,19 +18,41 @@ const QUESTIONS: Q[] = [
   { id: 'q11', type: 'text', text: 'What was the most memorable, surprising, or confusing moment of the experience? (optional)' },
   { id: 'q12', type: 'multi', other: true, text: 'Did you experience any technical difficulties?', options: ['Audio problems', 'GPS or navigation problems', 'Interface problems', 'Connection problems', 'No technical problems'], comment: 'Comment (optional)' },
 ];
-export function Survey({ ctx, onSubmit, onSkip }: { ctx: SurveyContext; onSubmit: (a: Answers) => Promise<void> | void; onSkip: () => Promise<void> | void }) {
+export function Survey({ ctx, onSubmit, error }: { ctx: SurveyContext; onSubmit: (a: Answers) => Promise<void> | void; error?: string }) {
   const [a, setA] = useState<Answers>({}); const [busy, setBusy] = useState(false);
-  const set = (id: string, v: string | string[] | number) => setA(o => ({ ...o, [id]: v }));
+  const [touched, setTouched] = useState<Record<string, boolean>>({}); const [attempted, setAttempted] = useState(false);
+  const set = (id: string, v: string | string[] | number) => { setA(o => ({ ...o, [id]: v })); setTouched(t => (t[id] ? t : { ...t, [id]: true })); };
   const toggle = (id: string, opt: string) => { const cur = (a[id] as string[] | undefined) ?? []; set(id, cur.includes(opt) ? cur.filter(x => x !== opt) : [...cur, opt]); };
   const go = async (fn: () => Promise<void> | void) => { setBusy(true); try { await fn(); } finally { setBusy(false); } };
   const has = (q: Q, o: string) => q.type === 'multi' ? ((a[q.id] as string[] | undefined) ?? []).includes(o) : a[q.id] === o;
   const pick = (q: Q, o: string) => (q.type === 'multi' ? toggle(q.id, o) : set(q.id, o));
+
+  // Validation: every visible question not marked "(optional)" needs a valid answer.
+  const visible = QUESTIONS.filter(q => !q.show || q.show(a, ctx));
+  const missing = missingRequired(visible, a);
+  const valid = missing.length === 0;
+  const showError = (q: Q) => missing.includes(q.id) && (attempted || Boolean(touched[q.id]));
+  // The Send button is truly disabled while invalid, so a tap on it is caught by an overlay (works on touch screens too)
+  // and reveals every missing answer and brings the first one into view.
+  const reveal = () => {
+    setAttempted(true);
+    const first = missing[0]; if (!first) return;
+    const el = document.getElementById(`sq-${first}`); if (!el) return;
+    const reduce = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+    el.focus({ preventScroll: true });
+  };
+  const send = () => {
+    if (!valid) { reveal(); return; }
+    void go(() => onSubmit(Object.fromEntries(Object.entries(a).filter(([, v]) => v !== 0 && v !== '' && !(Array.isArray(v) && !v.length)))));
+  };
   return (
-    <form className="survey" onSubmit={e => e.preventDefault()}>
+    <form className="survey" onSubmit={e => e.preventDefault()} noValidate>
       <h1>A few questions</h1>
-      <p className="muted">About 3–5 minutes. Every question can be left blank. Your answers are anonymous.</p>
-      {QUESTIONS.filter(q => !q.show || q.show(a, ctx)).map(q => (
-        <fieldset key={q.id}>
+      <p className="muted">About 3–5 minutes. Questions marked “(optional)” can be left blank; all other questions need an answer before you can send. Your answers are anonymous. Nothing is saved unless you press Send answers, and you can close this page at any time.</p>
+      {visible.map(q => (
+        <fieldset key={q.id} id={`sq-${q.id}`} tabIndex={-1} className={showError(q) ? 'invalid' : undefined}
+          aria-required={isRequiredQuestion(q.text) ? true : undefined} aria-describedby={showError(q) ? `sq-${q.id}-err` : undefined}>
           <legend>{q.text}</legend>
           {q.type === 'text' && <textarea rows={3} value={(a[q.id] as string) ?? ''} onChange={e => set(q.id, e.target.value)} />}
           {(q.type === 'multi' || q.type === 'single') && (<>
@@ -41,12 +64,17 @@ export function Survey({ ctx, onSubmit, onSkip }: { ctx: SurveyContext; onSubmit
           </>)}
           {q.type === 'scale' && (<div className="scale">{[1, 2, 3, 4, 5].map(n => (<button type="button" key={n} className={a[q.id] === n ? 'on' : ''} onClick={() => set(q.id, a[q.id] === n ? 0 : n)} aria-pressed={a[q.id] === n}>{n}</button>))}
             <div className="ends"><span>1 — {q.scaleLabels![0]}</span><span>5 — {q.scaleLabels![1]}</span></div></div>)}
+          {showError(q) && <p className="reqErr" id={`sq-${q.id}-err`}>This question is required.</p>}
         </fieldset>
       ))}
       <div className="row">
-        <button type="button" className="solid" disabled={busy} onClick={() => void go(() => onSubmit(Object.fromEntries(Object.entries(a).filter(([, v]) => v !== 0 && v !== '' && !(Array.isArray(v) && !v.length)))))}>Send answers</button>
-        <button type="button" disabled={busy} onClick={() => void go(onSkip)}>Skip</button>
+        <span className="sendWrap">
+          <button type="button" className="solid" disabled={busy || !valid} onClick={send}>Send answers</button>
+          {!valid && !busy && <span className="sendGuard" aria-hidden="true" onClick={reveal} />}
+        </span>
       </div>
+      {error && <p className="reqErr" role="alert">{error}</p>}
+      <p className="reqHint" role="status">{valid ? '' : `${missing.length} required question${missing.length === 1 ? '' : 's'} still need${missing.length === 1 ? 's' : ''} an answer.`}</p>
     </form>
   );
 }

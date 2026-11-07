@@ -19,7 +19,7 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
   const [sess, setSess] = useState<SessionPayload | null>(null);
   const [config, setConfig] = useState<Config>(DEFAULT_CONFIG);
   const [agree, setAgree] = useState(false);
-  const [consented, setConsented] = useState(false);
+  const [surveyErr, setSurveyErr] = useState('');
   const [panel, setPanel] = useState(false);
   const [problem, setProblem] = useState('');
   const [online, setOnline] = useState(true);
@@ -36,6 +36,7 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
   const wake = useRef<{ release: () => Promise<void> } | null>(null);
   const offset = useRef(0);
   const ended = useRef(false);
+  const ran = useRef(false); // true once the experience actually started for this participant
 
   const teardown = (keepAudio: boolean) => {
     gps.current?.stop(); compass.current.stop();
@@ -64,13 +65,14 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
 
   // Begin: audio unlock, compass and location prompts all start synchronously inside the tap (iOS requirement).
   const begin = () => {
+    if (!agree) return; // Begin is disabled until the consent box is ticked; this guards against any other trigger
     const a = new CollectiveAudio(); audio.current = a;
     const unlocked = a.unlock().then(() => true, () => false);
     void compass.current.request().catch(() => undefined);
     gps.current!.start();
     const nav = navigator as Navigator & { wakeLock?: { request: (t: 'screen') => Promise<{ release: () => Promise<void> }> } };
     void nav.wakeLock?.request('screen').then(l => { wake.current = l; }).catch(() => undefined);
-    setConsented(agree); setPhase('joining');
+    setPhase('joining');
     void (async () => {
       try {
         const ok = await unlocked;
@@ -85,6 +87,7 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
   };
   const run = async (s: SessionPayload) => {
     try { offset.current = await serverClockOffset(); } catch { offset.current = s.server_ms - Date.now(); }
+    ran.current = true;
     audio.current?.play(s.started_at_ms, offset.current);
     sessRef.current = s; setSess(s); setConfig(mergeConfig(s.config));
     logEvent(s.id, 'audio_activated', { ctx: audio.current?.state ?? 'none' });
@@ -96,6 +99,13 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
     const s = sessRef.current;
     if (s) { ev(byUser ? 'left_early' : 'experience_ended'); void leaveSession(s.id).catch(() => undefined); }
     window.setTimeout(() => { teardown(false); setPhase('ended'); }, 6500);
+  };
+
+  // Withdraw before the experience has started (waiting screen): free the server-side presence and stop everything.
+  const leaveWaiting = () => {
+    if (ended.current) return; ended.current = true;
+    const s = sessRef.current; if (s) void leaveSession(s.id).catch(() => undefined);
+    teardown(false); setLeft(true); setPhase('ended');
   };
 
   useEffect(() => {
@@ -139,9 +149,10 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
     return { fix: g.fix, fixAgeS: g.fixAgeS, speed: g.speed, heading: c.heading, headingReliable: c.reliable, peers: peers.current.list.map(p => ({ ...p, ageS: p.ageS + el })) };
   };
   const tapped = () => { void audio.current?.resume(); setPanel(p => !p); window.setTimeout(() => setPanel(false), 7000); };
-  const submit = async (a: Answers, skipped: boolean) => {
-    try { if (sess) await submitSurvey(sess.id, skipped ? {} : a, skipped); } catch { /* survey is optional; never block */ }
-    setPhase('done');
+  // The survey is required to complete the experience, so a failed send is reported and can be retried (no silent "Thank you").
+  const submit = async (a: Answers) => {
+    setSurveyErr('');
+    try { if (sess) await submitSurvey(sess.id, a, false); setPhase('done'); } catch { setSurveyErr(COPY.surveyFail); }
   };
 
   if (phase === 'running' || phase === 'ending') {
@@ -155,7 +166,7 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
             <div className="panel" onClick={e => e.stopPropagation()}>
               <p>Layer {layer + 1}{sess?.dest_name ? ` · ${sess.dest_name}` : ''}</p>
               <p className="muted">{o?.distToDest != null ? `About ${Math.max(0, Math.round(o.distToDest / 5) * 5)} m to go` : 'Waiting for location'}</p>
-              <button onClick={() => finish(true)}>Leave</button>
+              <button onClick={() => finish(true)}>{COPY.leave}</button>
             </div>)}
         </>)} />
     );
@@ -169,21 +180,26 @@ export function Participant({ code, layerKey }: { code: string; layerKey: string
         <div className={`intro l${layer}`}>
           <h1>{COPY.title}</h1><p className="lead">{COPY.lead}</p>
           <ul>{COPY.steps.map(s => <li key={s}>{s}</li>)}</ul>
-          <details><summary>{COPY.researchSummary}</summary>{COPY.research.map(t => <p key={t} className="muted">{t}</p>)}</details>
+          <section className="consentBox" aria-label={COPY.aboutTitle}>
+            <h2>{COPY.aboutTitle}</h2>
+            {COPY.about.map(x => <div key={x.h}><h3>{x.h}</h3><p>{x.t}</p></div>)}
+          </section>
           <label className="opt consent"><input type="checkbox" checked={agree} onChange={e => setAgree(e.target.checked)} /><span>{COPY.consentLabel}</span></label>
-          <button className="solid big" onClick={begin}>{COPY.begin}</button>
+          <button className="solid big" disabled={!agree} onClick={begin}>{COPY.begin}</button>
           {info?.name && <p className="tiny">{info.name}</p>}
         </div>
       )}
       {phase === 'joining' && <p className="muted pulse">Preparing sound…</p>}
-      {phase === 'waiting' && <p className="muted pulse">{COPY.waiting}</p>}
+      {phase === 'waiting' && <div><p className="muted pulse">{COPY.waiting}</p><button onClick={leaveWaiting}>{COPY.leave}</button></div>}
       {phase === 'ended' && (
         <div className="intro">
           <p className="lead">{sess ? (left ? COPY.left : COPY.ended) : COPY.ended}</p>
-          {sess && consented ? (<div className="row"><button className="solid" onClick={() => setPhase('survey')}>Answer a few questions</button><button onClick={() => setPhase('done')}>Not now</button></div>) : <p className="muted">{COPY.thanks}</p>}
+          {sess && ran.current ? (<>
+            <button className="solid" onClick={() => setPhase('survey')}>{left ? COPY.surveyOffer : COPY.surveyContinue}</button>
+            <p className="muted">{COPY.surveyNote}</p></>) : <p className="muted">{COPY.thanks}</p>}
         </div>
       )}
-      {phase === 'survey' && <Survey ctx={{ metOther: flags.current.met, reached: flags.current.reached }} onSubmit={a => submit(a, false)} onSkip={() => submit({}, true)} />}
+      {phase === 'survey' && <Survey ctx={{ metOther: flags.current.met, reached: flags.current.reached }} onSubmit={submit} error={surveyErr} />}
       {phase === 'done' && <p className="lead">{COPY.thanks}</p>}
     </main>
   );

@@ -26,11 +26,14 @@ The destination never needs a redeploy: create a new session, or End → Reset a
 ## Behaviour
 - **Presence** (opposite layer connected, any distance) → faint second colour. **Proximity** (25 m → 8 m, configurable) → second light grows and Stage 3 stems fade in. **Arrival** (≤10 m, 3 s dwell, GPS error ≤25 m) → whole screen in the participant's own colour, independent of everyone else. **Collective** → the two colours blend across the screen.
 - Same-layer participants never trigger Stage 3: the server returns opposite-layer peers only.
-- Only each participant's latest position is stored; deleted on leave and when the session ends. Events and surveys are stored only for participants who ticked consent; ids are per-session hashes, not account ids.
+- Consent: the intro screen has a required checkbox; **Begin stays disabled until it is ticked**. It explains location use, feedback collection and that the post-experience survey is required to complete the experience.
+- Location: only each participant's latest position is stored (replaced every 3 s). It is deleted when the participant presses Leave (in the experience or on the waiting screen) and when the artist ends/resets the session. Closing the page without Leave does **not** delete it until the session ends. Walking paths are never stored; compass heading never leaves the phone. Opposite-layer peers receive each other's pseudonymous id, position and accuracy.
+- Feedback: anonymous events (rounded distances, timestamps) and survey answers are saved for consenting participants (everyone who can press Begin). Nothing is linked to a name, so individual records cannot be looked up or deleted later; participant rows, events and surveys are never auto-deleted. The anonymous sign-in id lives in the browser's local storage.
+- Survey: no Skip button. Questions not marked "(optional)" are required and Send answers stays disabled until they are answered. Leaving/withdrawing never requires the survey: Leave in the experience, Leave on the waiting screen, or simply closing the page (nothing is submitted unless Send answers is pressed). People who leave early may still choose "Share feedback anyway". A failed send shows an error and can be retried.
 - Heartbeat every 3 s; presence expires after 20 s (configurable).
 
 ## Before public use
-- Fill `[Minkyeing Jo]` / `[mjo@risd.edu]` in `src/copy.ts` and have the research notice reviewed (advisor / IRB).
+- Fill `[ARTIST NAME]` / `[CONTACT EMAIL]` in `src/copy.ts` and have the consent text reviewed by your advisor / school if required.
 - Free-text survey answers can contain personal details even though no identifiers are requested.
 
 ## Verification status (honest)
@@ -49,7 +52,9 @@ The destination never needs a redeploy: create a new session, or End → Reset a
 - [ ] 25 m → 8 m collective fade; separating fades back; two colours blend.
 - [ ] Screen lock / backgrounding: sound and presence recover on return.
 - [ ] Airplane mode ~20 s → "Connection lost", then recovery.
-- [ ] End session → music and light fade, survey offered; Leave works; CSV exports open correctly.
+- [ ] Begin is greyed out until the consent box is ticked.
+- [ ] End session → music and light fade, "Continue to the feedback survey" offered (no Skip); Leave works; CSV exports open correctly.
+- [ ] Leave on the waiting screen and mid-experience both work without opening the survey.
 - [ ] Two phones' loops sound in sync (estimated from the server clock; not guaranteed).
 
 ## Troubleshooting

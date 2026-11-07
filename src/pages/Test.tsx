@@ -8,7 +8,7 @@ import { offsetLatLon } from '../lib/geo';
 import type { ModelOutput } from '../lib/model';
 import { go } from '../nav';
 
-/** Artist-only simulator. Never touches Supabase, so simulated people and events cannot enter the research data. */
+/** Artist-only simulator. Never touches Supabase, so simulated people and events cannot enter the collected feedback data. */
 type Sim = { layer: 0 | 1; distance: number; meBearing: number; accuracy: number; gpsLost: boolean; speed: number; heading: number; compass: boolean;
   peerOn: boolean; peerDist: number; peerBearing: number; peerAccuracy: number; peerLocated: boolean };
 const INIT: Sim = { layer: 0, distance: 200, meBearing: 270, accuracy: 6, gpsLost: false, speed: 1.4, heading: 90, compass: true, peerOn: false, peerDist: 120, peerBearing: 0, peerAccuracy: 6, peerLocated: true };
@@ -66,7 +66,7 @@ export function TestPage() {
           <div className="phone">
             {destOk && !survey && <ExperienceView key={runKey} layer={sim.layer} dest={D} config={cfg} getSources={getSources} audio={audio.current} ending={ending}
               onEvent={(n, m) => setEvents(e => [`${new Date().toLocaleTimeString()}  ${n}${m ? ' ' + JSON.stringify(m) : ''}`, ...e].slice(0, 40))} onDerived={setOut} />}
-            {survey && <div className="phoneScroll"><Survey ctx={{ metOther: true, reached: true }} onSubmit={a => { window.alert(JSON.stringify(a, null, 1)); setSurvey(false); }} onSkip={() => setSurvey(false)} /></div>}
+            {survey && <div className="phoneScroll"><Survey ctx={{ metOther: true, reached: true }} onSubmit={a => { window.alert(JSON.stringify(a, null, 1)); setSurvey(false); }} /><button type="button" onClick={() => setSurvey(false)}>Close survey preview</button></div>}
           </div>
           <p className="muted center">Individual arrival and the two-colour encounter are separate presets.</p>
         </div>

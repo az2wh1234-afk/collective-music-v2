@@ -9,7 +9,7 @@ export type Sources = { fix: Fix | null; fixAgeS: number; speed: number; heading
 type Props = { layer: 0 | 1; dest: LatLon | null; config: Config; getSources: () => Sources; audio: CollectiveAudio | null; ending: boolean;
   onEvent: (name: string, meta?: Record<string, unknown>) => void; onDerived?: (o: ModelOutput) => void; onTap?: () => void; overlay?: (o: ModelOutput | null) => ReactNode };
 
-/** Runs the interaction model at 5 Hz, drives audio + light from it, and emits research events on state transitions. */
+/** Runs the interaction model at 5 Hz, drives audio + light from it, and emits feedback events on state transitions. */
 export function ExperienceView(props: Props) {
   const P = useRef(props); P.current = props;
   const model = useRef<ExperienceModel | null>(null);
